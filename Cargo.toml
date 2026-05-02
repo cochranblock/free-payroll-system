@@ -26,11 +26,23 @@ include = [
 name = "free-payroll-system"
 path = "src/main.rs"
 
+[[bin]]
+name = "free-payroll-system-test"
+path = "src/bin/free-payroll-system-test.rs"
+required-features = ["tests"]
+
 [lib]
 name = "free_payroll_system"
 path = "src/lib.rs"
 
+# tests = exopack for TRIPLE SIMS quality gate. Release strips both.
+[features]
+default = []
+tests = ["exopack", "tokio"]
+
 [dependencies]
+exopack = { version = "0.2", optional = true, features = ["triple_sims"] }
+tokio = { version = "1", features = ["full"], optional = true }
 
 
 # ─── DIAMOND RUST BINARY ARCHITECTURE ───────────────────────────────
