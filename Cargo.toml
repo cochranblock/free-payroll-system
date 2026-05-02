@@ -1,0 +1,63 @@
+# Unlicense — public domain — cochranblock.org
+# free-payroll-system — Free, open-source, local-first payroll. No SaaS. No per-employee pricing. Forever.
+# Contributors: GotEmCoach, KOVA, Claude Opus 4.7
+
+[package]
+name = "free-payroll-system"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Michael Cochran <mcochran@cochranblock.org>"]
+description = "Free, open-source, local-first payroll system. No SaaS. No per-employee pricing. Unlicense."
+license = "Unlicense"
+repository = "https://github.com/cochranblock/free-payroll-system"
+homepage = "https://cochranblock.org"
+readme = "README.md"
+keywords = ["payroll", "small-business", "local-first", "open-source", "free"]
+categories = ["command-line-utilities", "finance"]
+include = [
+    "src/**/*",
+    "Cargo.toml",
+    "UNLICENSE",
+    "README.md",
+]
+
+[[bin]]
+name = "free-payroll-system"
+path = "src/main.rs"
+
+[lib]
+name = "free_payroll_system"
+path = "src/lib.rs"
+
+[dependencies]
+
+
+# ─── DIAMOND RUST BINARY ARCHITECTURE ───────────────────────────────
+# Canonical: https://cochranblock.org/diamond-profile.toml
+# free-payroll-system runs on a small-business owner's laptop. Speed-Diamond fits.
+#   cargo build --profile=diamond
+
+[profile.diamond]
+inherits = "release"
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
+overflow-checks = false
+debug = false
+incremental = false
+split-debuginfo = "off"
+
+[profile.diamond-edge]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
+overflow-checks = false
+debug = false
+incremental = false
+split-debuginfo = "off"
