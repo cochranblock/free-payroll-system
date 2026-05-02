@@ -81,3 +81,41 @@ fn employee_toml_roundtrips() {
     let pc = compute(&emp).unwrap();
     assert_eq!(pc.gross, Money::dollars(2_000));
 }
+
+#[test]
+fn employee_toml_accepts_dollar_string_form() {
+    // The friendly form. Eliminates the cents-footgun.
+    let toml_src = r#"
+        name = "Friendly Form"
+        state = "MD"
+        locality = "baltimore"
+        filing_status = "single"
+        pay_frequency = "biweekly"
+        gross = "$2,000.00"
+        ytd_ss_wages = "$0.00"
+        ytd_medicare_wages = "$0.00"
+    "#;
+    let emp: Employee = toml::from_str(toml_src).unwrap();
+    let pc = compute(&emp).unwrap();
+    assert_eq!(pc.gross, Money::dollars(2_000));
+}
+
+#[test]
+fn paycheck_has_metadata_for_json_consumers() {
+    let pc = compute(&baltimore_county_single(2_000)).unwrap();
+    assert!(pc.tax_year >= 2024);
+    assert_eq!(pc.currency, "USD");
+    assert_eq!(pc.unit, "cents");
+    assert!(!pc.version.is_empty());
+    assert_eq!(pc.state, "MD");
+    assert_eq!(pc.locality.as_deref(), Some("baltimore"));
+}
+
+#[test]
+fn paycheck_state_and_local_broken_out() {
+    let pc = compute(&baltimore_county_single(2_000)).unwrap();
+    assert!(pc.state_income_tax.0 > 0);
+    assert!(pc.local_income_tax.0 > 0);
+    // Net + total withheld = gross still holds.
+    assert_eq!(pc.total_withheld() + pc.net, pc.gross);
+}

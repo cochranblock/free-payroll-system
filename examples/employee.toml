@@ -1,19 +1,24 @@
 # Unlicense — public domain — cochranblock.org
 # Contributors: GotEmCoach, KOVA, Claude Opus 4.7
 #
-# Example employee config for `free-payroll-system paystub --employee employee.toml`.
-# All money values are in CENTS (i64). $2,000.00 = 200000.
+# Starter employee config for `free-payroll-system paystub --employee employee.toml`.
+#
+# Money values can be EITHER:
+#   - a dollar string  → "$2,000.00"  (recommended; $ and commas optional)
+#   - integer cents    → 200000        (advanced; no thousands separator)
+# Both forms parse identically.
 
 name = "Jane Doe"
 state = "MD"
-locality = "baltimore"
-filing_status = "single"
-pay_frequency = "biweekly"
+locality = "baltimore"      # MD county code: baltimore, montgomery, howard, etc.
+                             # See src/tax/state/md.rs for the full list.
+filing_status = "single"     # single | married_jointly | head_of_household
+pay_frequency = "biweekly"   # weekly | biweekly | semimonthly | monthly
 
-# Gross wages this pay period: $2,000.00 = 200000 cents.
-gross = 200000
+# Gross wages this pay period.
+gross = "$2,000.00"
 
-# Year-to-date Social Security and Medicare wages BEFORE this paycheck.
-# Used for SS wage-base cap ($168,600) and Additional Medicare threshold ($200,000).
-ytd_ss_wages = 0
-ytd_medicare_wages = 0
+# Year-to-date wages BEFORE this paycheck. Required for FICA wage-base cap
+# ($168,600 SS) and Additional Medicare threshold ($200,000). Default 0.
+ytd_ss_wages = "$0.00"
+ytd_medicare_wages = "$0.00"

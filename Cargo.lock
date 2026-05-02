@@ -146,7 +146,7 @@ checksum = "6dd74976b01ef5cfb3da785ba79e25854582008632fdcc4096ca9ea2174c2e8f"
 
 [[package]]
 name = "free-payroll-system"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",

@@ -11,19 +11,33 @@ use crate::money::Money;
 use crate::tax::{FilingStatus, PayFrequency};
 use std::str::FromStr;
 
+/// State withholding broken into state and local components. Real paystubs
+/// itemize these separately so the local rate can be audited independently.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct StateAndLocal {
+    pub state: Money,
+    pub local: Money,
+}
+
+impl StateAndLocal {
+    pub fn total(&self) -> Money {
+        self.state + self.local
+    }
+}
+
 /// State withholding interface. Each state implements its own rules.
 pub trait StateTax {
     /// Two-letter postal code. e.g. "MD".
     fn code(&self) -> &'static str;
 
-    /// State income tax withholding (state + local combined where applicable).
-    fn withhold(
+    /// State + local income tax withholding, itemized.
+    fn breakdown(
         &self,
         gross: Money,
         status: FilingStatus,
         freq: PayFrequency,
         locality: Option<&str>,
-    ) -> Money;
+    ) -> StateAndLocal;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -44,15 +58,15 @@ impl FromStr for State {
 }
 
 impl State {
-    pub fn withhold(
+    pub fn breakdown(
         self,
         gross: Money,
         status: FilingStatus,
         freq: PayFrequency,
         locality: Option<&str>,
-    ) -> Money {
+    ) -> StateAndLocal {
         match self {
-            State::MD => md::Maryland.withhold(gross, status, freq, locality),
+            State::MD => md::Maryland.breakdown(gross, status, freq, locality),
         }
     }
 }
