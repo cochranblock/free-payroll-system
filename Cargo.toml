@@ -17,6 +17,7 @@ keywords = ["payroll", "small-business", "local-first", "open-source", "free"]
 categories = ["command-line-utilities", "finance"]
 include = [
     "src/**/*",
+    "examples/**/*",
     "Cargo.toml",
     "UNLICENSE",
     "README.md",
