@@ -1,0 +1,74 @@
+<!-- Unlicense — public domain — cochranblock.org -->
+<!-- Contributors: GotEmCoach, KOVA, Claude Opus 4.7 -->
+
+# Contributing
+
+Code is Unlicense (public domain). By contributing you agree that your contribution is also released into the public domain. No CLA. No DCO. No corporate gatekeeping.
+
+## Adding your state
+
+Maryland (`src/tax/state/md.rs`) is the reference implementation. To add another state:
+
+1. Copy `src/tax/state/md.rs` to `src/tax/state/<two_letter_lowercase>.rs`. e.g. `tx.rs`, `ca.rs`.
+2. Replace the constants with your state's:
+   - Personal exemption (or set to `Money::ZERO` if your state doesn't use one).
+   - Standard deduction rule (clamp to `Money::ZERO` if not applicable).
+   - Annual progressive brackets — `(over_cents, tentative_tax_cents, rate_bps)`. **No income tax states** (TX, FL, WA, NV, SD, WY, AK, TN, NH): just return `Money::ZERO` from `withhold()`.
+   - Local rate function (delete if your state has no local income tax).
+3. Cite every constant. Open `data/citations.md` and add a row pointing to the state's withholding-tables PDF + page number. **PRs without citations will be rejected.**
+4. Add tests at the bottom of the file using the same pattern as MD's `md_low_income_after_deduction_and_exemption` — include the math in the comment so an auditor can verify by hand.
+5. Wire it into `src/tax/state/mod.rs`:
+   - Add `pub mod xx;` at the top.
+   - Add `XX,` to the `State` enum.
+   - Add the parse arm to `FromStr` (`"XX" | "TEXAS" => Ok(State::TX)`).
+   - Add the dispatch arm to `State::withhold`.
+6. Run `cargo test --features tests`. Run `cargo run --features tests --bin free-payroll-system-test` (TRIPLE SIMS gate). Both must pass.
+7. Open the PR. Title: `Add <STATE> withholding`. Body: link the source PDF + page numbers.
+
+A clean state PR is ~150 lines + ~30 lines of tests + 1 row in citations.md + 4 lines in `state/mod.rs`. Should take an evening.
+
+## Adding a new pay frequency
+
+Already supported: Weekly, Biweekly, Semimonthly, Monthly. Adding Daily / Quarterly: extend `PayFrequency` in `src/tax/mod.rs`. The annualization layer handles the rest. One PR, ~5 lines.
+
+## Adding a new federal tax year
+
+When IRS publishes Pub 15-T for the new year:
+
+1. In `src/tax/federal.rs`: copy `SINGLE_BRACKETS_2024` → `SINGLE_BRACKETS_<YEAR>`, update constants from the new Pub 15-T Worksheet 1A. Same for MFJ + HOH.
+2. Update `SS_WAGE_BASE_<YEAR>` from the SSA cost-of-living announcement.
+3. Update `TAX_YEAR` constant.
+4. Add a row to `data/citations.md` for the new year's Pub 15-T URL + access date.
+5. Add a worked-example test in `tests/federal_pub15t.rs` against a Pub 15-T worked example for the new year.
+
+v0.3.0 will automate steps 1–2 via `govfetch`.
+
+## Style
+
+- No `unwrap()` outside tests except for static infallible operations. Use `anyhow::Context` for I/O, `thiserror` for typed errors in library code.
+- No `f64` for money. `Money(i64 cents)` only. `mul_bps` for percentages.
+- No `chrono` unless you genuinely need date math. v0.1.0 has none and ships fine.
+- Header on every new file:
+  ```
+  // SPDX-License-Identifier: Unlicense
+  // Unlicense — public domain — cochranblock.org
+  // Contributors: GotEmCoach, KOVA, Claude Opus 4.7
+  ```
+- Run [`header-writer`](https://github.com/cochranblock/header-writer) before committing if you forget.
+
+## TRIPLE SIMS gate
+
+Before opening a PR, run:
+
+```bash
+cargo run --features tests --bin free-payroll-system-test
+```
+
+This runs `cargo test` + binary smoke tests three times via `exopack::triple_sims::f60`. Any flake = FAIL. PRs whose tests are non-deterministic will be sent back.
+
+## What this project will NOT accept
+
+- SaaS dependencies. No phone-home, no telemetry, no cloud config, no auth-required API calls at runtime.
+- Trademark/branding restrictions.
+- License changes. Unlicense forever. If you want a different license, fork it — that's literally what the Unlicense is for.
+- Per-employee pricing schemes. There is no business model on this side of the repo.

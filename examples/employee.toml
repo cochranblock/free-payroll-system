@@ -1,0 +1,19 @@
+# Unlicense — public domain — cochranblock.org
+# Contributors: GotEmCoach, KOVA, Claude Opus 4.7
+#
+# Example employee config for `free-payroll-system paystub --employee employee.toml`.
+# All money values are in CENTS (i64). $2,000.00 = 200000.
+
+name = "Jane Doe"
+state = "MD"
+locality = "baltimore"
+filing_status = "single"
+pay_frequency = "biweekly"
+
+# Gross wages this pay period: $2,000.00 = 200000 cents.
+gross = 200000
+
+# Year-to-date Social Security and Medicare wages BEFORE this paycheck.
+# Used for SS wage-base cap ($168,600) and Additional Medicare threshold ($200,000).
+ytd_ss_wages = 0
+ytd_medicare_wages = 0

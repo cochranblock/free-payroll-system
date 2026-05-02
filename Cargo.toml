@@ -4,7 +4,7 @@
 
 [package]
 name = "free-payroll-system"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 authors = ["Michael Cochran <mcochran@cochranblock.org>"]
@@ -20,7 +20,11 @@ include = [
     "Cargo.toml",
     "UNLICENSE",
     "README.md",
+    "RECEIPTS.md",
+    "data/citations.md",
 ]
+
+default-run = "free-payroll-system"
 
 [[bin]]
 name = "free-payroll-system"
@@ -41,6 +45,12 @@ default = []
 tests = ["exopack", "tokio"]
 
 [dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+anyhow = "1"
+thiserror = "2"
 exopack = { version = "0.2", optional = true, features = ["triple_sims"] }
 tokio = { version = "1", features = ["full"], optional = true }
 
