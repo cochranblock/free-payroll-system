@@ -84,3 +84,131 @@ fn no_negative_withholding() {
     );
     assert!(w.0 >= 0);
 }
+
+// ─── Property tests ───────────────────────────────────────────────────────
+// These don't hand-compute against my typed brackets. They verify INVARIANTS
+// that any correct withholding implementation must satisfy regardless of the
+// specific bracket values. They catch bracket-walk bugs that single-point
+// tests cannot.
+
+#[test]
+fn federal_withhold_monotonic_in_gross() {
+    // For any pair gross_a > gross_b, withhold(gross_a) >= withhold(gross_b).
+    // Holds across pay frequencies and filing statuses.
+    use FilingStatus::*;
+    use PayFrequency::*;
+    let grosses_pp = [0, 100, 500, 1_000, 2_500, 5_000, 10_000, 20_000, 50_000];
+    for status in [Single, MarriedJointly, HeadOfHousehold] {
+        for freq in [Weekly, Biweekly, Semimonthly, Monthly] {
+            let mut prev = Money::ZERO;
+            for &g in &grosses_pp {
+                let w = federal::withhold(Money::dollars(g), status, freq);
+                assert!(
+                    w.0 >= prev.0,
+                    "monotonicity violated: status={status:?} freq={freq:?} gross=${g} prev_w=${} new_w=${}",
+                    prev.0 / 100,
+                    w.0 / 100,
+                );
+                prev = w;
+            }
+        }
+    }
+}
+
+#[test]
+fn federal_withhold_zero_gross_zero_tax() {
+    use FilingStatus::*;
+    use PayFrequency::*;
+    for status in [Single, MarriedJointly, HeadOfHousehold] {
+        for freq in [Weekly, Biweekly, Semimonthly, Monthly] {
+            assert_eq!(
+                federal::withhold(Money::ZERO, status, freq),
+                Money::ZERO,
+                "non-zero withhold at zero gross: status={status:?} freq={freq:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn federal_withhold_consistent_across_frequencies() {
+    // Same annual gross computed at different pay frequencies should produce
+    // ≈ the same annualized total tax. Drift comes from two integer-division
+    // truncations (annualize per-pp gross to annual, then divide annual tax
+    // back by n). Bound: drift across all four frequencies must be < 0.05%
+    // of the annual gross (catches algorithmic bugs without flapping on
+    // legitimate sub-cent rounding).
+    let annual_targets_cents = [26_000_00i64, 52_000_00, 100_000_00, 250_000_00];
+    for &target_cents in &annual_targets_cents {
+        // Per-pp at CENT level to keep inputs as close to identical-annual as possible.
+        let weekly = Money(target_cents / 52);
+        let biweekly = Money(target_cents / 26);
+        let semimonthly = Money(target_cents / 24);
+        let monthly = Money(target_cents / 12);
+
+        let aw = federal::withhold(weekly, FilingStatus::Single, PayFrequency::Weekly) * 52;
+        let ab = federal::withhold(biweekly, FilingStatus::Single, PayFrequency::Biweekly) * 26;
+        let as_ =
+            federal::withhold(semimonthly, FilingStatus::Single, PayFrequency::Semimonthly) * 24;
+        let am = federal::withhold(monthly, FilingStatus::Single, PayFrequency::Monthly) * 12;
+
+        let max = aw.0.max(ab.0).max(as_.0).max(am.0);
+        let min = aw.0.min(ab.0).min(as_.0).min(am.0);
+        let drift = max - min;
+        let tolerance = (target_cents * 5) / 10_000; // 0.05% of annual gross
+        let tolerance = tolerance.max(100); // floor at $1 for small targets
+        assert!(
+            drift <= tolerance,
+            "annual tax drift {drift}c > tolerance {tolerance}c at target ${} (w={} b={} s={} m={})",
+            target_cents / 100,
+            aw.0 / 100,
+            ab.0 / 100,
+            as_.0 / 100,
+            am.0 / 100,
+        );
+    }
+}
+
+#[test]
+fn fica_constants_match_statute() {
+    // 26 USC § 3101 — these are the *statutory* values. If anyone refactors
+    // the constants, this catches it. Citations in src/tax/federal.rs.
+    assert_eq!(federal::SS_RATE_BPS, 620, "26 USC § 3101(a) is 6.2%");
+    assert_eq!(
+        federal::MEDICARE_RATE_BPS,
+        145,
+        "26 USC § 3101(b)(1) is 1.45%"
+    );
+    assert_eq!(
+        federal::ADDL_MEDICARE_RATE_BPS,
+        90,
+        "26 USC § 3101(b)(2) is 0.9%"
+    );
+    assert_eq!(
+        federal::ADDL_MEDICARE_THRESHOLD,
+        Money::dollars(200_000),
+        "26 USC § 3101(b)(2) employer threshold is $200,000"
+    );
+    assert_eq!(
+        federal::FUTA_RATE_BPS,
+        600,
+        "26 USC § 3301 base FUTA rate is 6.0%"
+    );
+    assert_eq!(
+        federal::FUTA_WAGE_BASE,
+        Money::dollars(7_000),
+        "26 USC § 3306(b)(1) FUTA wage base is $7,000"
+    );
+}
+
+#[test]
+fn fica_ss_never_exceeds_max_annual_tax() {
+    // 6.2% * $168,600 = $10,453.20 max SS for 2024. No paycheck combo can exceed.
+    let max_ss_2024 = Money::cents(1_045_320); // $10,453.20
+    let huge_paycheck = Money::dollars(50_000);
+    let ss = federal::social_security(huge_paycheck, Money::ZERO);
+    assert!(
+        ss.0 <= max_ss_2024.0,
+        "SS withhold exceeded annual max: got {ss} > {max_ss_2024}"
+    );
+}

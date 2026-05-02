@@ -156,20 +156,69 @@ impl StateTax for Maryland {
 mod tests {
     use super::*;
 
+    // ─── Regression tripwires (drift catchers, not "tests") ─────────────────
+    // These pin specific constant values. They exist so that an unintended
+    // refactor that changes a rate fails CI loudly. The CITATION for the
+    // constant is in the source above; that's what an auditor diffs against
+    // the Comptroller of MD publication.
+
     #[test]
-    fn baltimore_county_default_rate() {
+    fn tripwire_baltimore_county_2024_rate_pinned_320bps() {
         assert_eq!(local_rate_bps_2024("baltimore"), 320);
     }
 
     #[test]
-    fn worcester_lowest() {
+    fn tripwire_worcester_2024_rate_pinned_225bps() {
         assert_eq!(local_rate_bps_2024("worcester"), 225);
     }
 
     #[test]
-    fn unknown_falls_back_to_safe_default() {
-        // 320 bps = 3.20%, the most common high rate. Safe overpay > under-withhold.
+    fn tripwire_unknown_locality_safe_default_320bps() {
+        // Higher of the published 2024 county rates. Over-withholding is
+        // recoverable at filing; under-withholding triggers IRS penalties.
         assert_eq!(local_rate_bps_2024("xyzzy"), 320);
+    }
+
+    // ─── Sanity bounds across every published county ───────────────────────
+    // Catches a rate that drifts outside the legal range during a refactor
+    // (e.g., missing decimal point pushing 3.20 → 320.00, or accidental zero).
+
+    #[test]
+    fn every_county_rate_within_legal_bounds() {
+        let counties = [
+            "allegany",
+            "anne_arundel",
+            "baltimore",
+            "baltimore_city",
+            "calvert",
+            "caroline",
+            "carroll",
+            "cecil",
+            "charles",
+            "dorchester",
+            "frederick",
+            "garrett",
+            "harford",
+            "howard",
+            "kent",
+            "montgomery",
+            "prince_georges",
+            "queen_annes",
+            "somerset",
+            "st_marys",
+            "talbot",
+            "washington",
+            "wicomico",
+            "worcester",
+            "nonresident",
+        ];
+        for c in counties {
+            let bps = local_rate_bps_2024(c);
+            assert!(
+                (100..=500).contains(&bps),
+                "county '{c}' rate {bps}bps outside legal MD bounds [1.00%, 5.00%]"
+            );
+        }
     }
 
     #[test]
@@ -201,5 +250,58 @@ mod tests {
         );
         // 17160 cents / 26 = 660 cents
         assert_eq!(w, Money::cents(660));
+    }
+
+    #[test]
+    fn md_monotonic_in_gross() {
+        // Higher gross MUST produce >= withholding. Property test, not a
+        // hand-computed value — catches bracket-walk bugs that don't show
+        // in any single hand-verified test.
+        let md = Maryland;
+        let test_grosses = [0, 500, 1_000, 1_500, 2_000, 5_000, 10_000, 20_000];
+        let mut prev = Money::ZERO;
+        for &g in &test_grosses {
+            let w = md.withhold(
+                Money::dollars(g),
+                FilingStatus::Single,
+                PayFrequency::Biweekly,
+                Some("baltimore"),
+            );
+            assert!(
+                w.0 >= prev.0,
+                "monotonicity violated at gross=${g}: prev_w=${} > new_w=${}",
+                prev.0 / 100,
+                w.0 / 100,
+            );
+            prev = w;
+        }
+    }
+
+    #[test]
+    fn md_higher_bracket_means_higher_effective_rate() {
+        // $30k single annual → 4.75% bracket; $200k single annual → 5.5% bracket.
+        // The effective rate at $200k must exceed the effective rate at $30k.
+        // (Effective rate = annual_tax / annual_gross, ignoring deduction effects.)
+        let md = Maryland;
+        let low_pp = Money::dollars(1_154); // ≈$30k/yr at biweekly
+        let high_pp = Money::dollars(7_692); // ≈$200k/yr at biweekly
+        let w_low = md.withhold(
+            low_pp,
+            FilingStatus::Single,
+            PayFrequency::Biweekly,
+            Some("baltimore"),
+        );
+        let w_high = md.withhold(
+            high_pp,
+            FilingStatus::Single,
+            PayFrequency::Biweekly,
+            Some("baltimore"),
+        );
+        let rate_low_bps = (w_low.0 * 10_000) / low_pp.0;
+        let rate_high_bps = (w_high.0 * 10_000) / high_pp.0;
+        assert!(
+            rate_high_bps > rate_low_bps,
+            "effective rate did not increase with bracket: low={rate_low_bps}bps high={rate_high_bps}bps",
+        );
     }
 }

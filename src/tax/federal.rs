@@ -101,14 +101,19 @@ pub fn withhold(gross: Money, status: FilingStatus, freq: PayFrequency) -> Money
 /// 2023-10-12. Update annually from ssa.gov/oact/cola/cbb.html.
 pub const SS_WAGE_BASE_2024: Money = Money::dollars(168_600);
 
-/// Social Security tax rate, employee share — 6.2%. Set by 26 USC § 3101(a). Stable.
+/// Social Security tax rate, employee share — 6.2% (620 bps).
+/// Codified: 26 USC § 3101(a). https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title26-section3101
+/// Stable since 1990 (last amendment to the rate floor).
 pub const SS_RATE_BPS: u32 = 620;
 
-/// Medicare tax rate, employee share — 1.45%. Set by 26 USC § 3101(b)(1). Stable.
+/// Medicare tax rate, employee share — 1.45% (145 bps).
+/// Codified: 26 USC § 3101(b)(1). Stable since 1986.
 pub const MEDICARE_RATE_BPS: u32 = 145;
 
-/// Additional Medicare tax — 0.9% on wages above $200,000 (employer threshold,
-/// regardless of filing status). 26 USC § 3101(b)(2). Set by ACA, stable.
+/// Additional Medicare tax — 0.9% (90 bps) on wages above $200,000 (employer
+/// withholding threshold, regardless of filing status — employee-side reconciliation
+/// at filing time accounts for joint thresholds).
+/// Codified: 26 USC § 3101(b)(2). Set by ACA (Pub. L. 111-148, § 9015). Stable since 2013.
 pub const ADDL_MEDICARE_RATE_BPS: u32 = 90;
 pub const ADDL_MEDICARE_THRESHOLD: Money = Money::dollars(200_000);
 
