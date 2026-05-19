@@ -1,0 +1,13 @@
+[book]
+title = "free-payroll-system"
+description = "Zero-cost open-source payroll system."
+src = "src"
+language = "en"
+
+[output.html]
+git-repository-url = "https://github.com/cochranblock/free-payroll-system"
+site-url = "/free-payroll-system/"
+default-theme = "coal"
+preferred-dark-theme = "coal"
+additional-css = ["theme/custom.css"]
+additional-js = ["theme/force-theme.js"]

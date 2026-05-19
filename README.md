@@ -24,6 +24,8 @@ Single-binary Rust CLI that computes a balanced paystub (federal income tax + FI
 
 ## Documentation
 
+**[cochranblock.github.io/free-payroll-system](https://cochranblock.github.io/free-payroll-system/)** — full mdBook docs.
+
 This README is the entry point. The actual docs live in two source-of-truth files at the root of the repo:
 
 - **[PROOF_OF_ARTIFACTS.md](PROOF_OF_ARTIFACTS.md)** — what exists today, status, source-linked. Build output, architecture, CLI commands, test coverage, roadmap, verification recipe. If you want to know what this project *does*, read this.
